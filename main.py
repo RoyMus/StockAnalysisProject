@@ -1,8 +1,7 @@
 import streamlit as st
-from datetime import date
 from WalletPage import WalletPage
 from HomePage import HomePage
-from WalletBalance import WalletBalance
+from StockPurchaseBot import StockPurchaseBot
 Page = st.sidebar.radio(
     "Welcome!",
     ("Home", "Wallet", "Stock Trading Bot"))
@@ -14,3 +13,7 @@ if Page == 'Home':
 if Page == 'Wallet':
     WalletPage = WalletPage(st)
     WalletPage.display()
+if Page == 'Stock Trading Bot':
+    StockPurchaseBot = StockPurchaseBot(st)
+    StockPurchaseBot.display()
+
