@@ -7,10 +7,10 @@ Page = st.sidebar.radio(
     "Welcome!",
     ("Home", "Wallet", "Stock Trading Bot"))
 
+
 if Page == 'Home':
     HomePage = HomePage(st)
     HomePage.display()
 if Page == 'Wallet':
-    wallet = WalletBalance(0)
-    WalletPage = WalletPage(st, wallet)
+    WalletPage = WalletPage(st)
     WalletPage.display()
