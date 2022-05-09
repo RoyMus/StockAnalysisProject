@@ -6,6 +6,7 @@ class WalletPage:
     def __init__(self, webapp):
         self.st = webapp
     def display(self):
+        self.st.title("Wallet")
         option = self.st.selectbox('Would you like to deposit money or withdraw? ', ('Deposit', 'Withdraw'))
         self.st.write('')
         self.st.write('')

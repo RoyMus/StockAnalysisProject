@@ -4,6 +4,7 @@ from datetime import date
 import yfinance as yf
 from plotly import graph_objects as go
 from LinearRegressionAlgo import LRAlgo
+
 START = "2015-01-01"
 TODAY = date.today().strftime("%Y-%m-%d")
 
@@ -32,6 +33,8 @@ class HomePage:
         predFig.layout.update(title_text='Prediction Closing Price')
         predFig.update_xaxes(title_text='Date')
         predFig.update_yaxes(title_text='Price')
+        predFig.update_layout(yaxis_tickprefix='$', yaxis_tickformat=',.2f')
+        CandleStickFig.update_layout(yaxis_tickprefix='$', yaxis_tickformat=',.2f')
         st.plotly_chart(CandleStickFig)
         st.plotly_chart(predFig)
 
@@ -50,13 +53,19 @@ class HomePage:
             tail = data.tail()
             tail['Date'] = tail['Date'].dt.strftime('%d/%m/%Y')
             tail = tail.reindex(['Date', 'Open', 'Close', 'Low', 'High'], axis=1)  # Reaarange Columns
+            tail.rename(columns={'Open': 'Open- $', 'Close': 'Close- $', 'Low': 'Low- $', 'High': 'High- $'}, inplace=True, errors='raise') #Renaming columns
             style = tail.style.hide_index()
             self.st.write(style.to_html(), unsafe_allow_html=True)  # Show the table without the index column
             self.st.write("")
             self.st.write("")
             self.st.subheader('Prediction table: ')
+            self.st.caption('Linear regression prediction')
             predTable = Algo.get_pred_table(n_days)
-            self.st.write(predTable)
+            dispTable = (predTable.tail(predTable.shape[0] - 1)).iloc[:, ::-1]
+            dispTable.rename(columns={'Prediction': 'Prediction- $'}, inplace=True, errors='raise')
+            dispTable['Date'] = dispTable['Date'].dt.strftime('%d/%m/%Y')
+            style = dispTable.style.hide_index()
+            self.st.write(style.to_html(), unsafe_allow_html=True)  # Show the table without the index column
             self.st.text("")
             self.plot_raw_data(data, predTable)
         else:
