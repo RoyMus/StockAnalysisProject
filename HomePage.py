@@ -43,30 +43,36 @@ class HomePage:
         selected_stock = st.text_input("Type a stock ticker for prediction")
         n_days = self.st.slider("Days of prediction: ", 1, 30)
 
-        if len(selected_stock) > 0:
-
-            with self.st.spinner("Loading..."):
-                data = self.load_data(selected_stock)
-            self.st.success("Done!")
-            self.st.subheader('Raw data')
-            tail = data.tail()
-            tail['Date'] = tail['Date'].dt.strftime('%d/%m/%Y')
-            tail = tail.reindex(['Date', 'Open', 'Close', 'Low', 'High'], axis=1)  # Reaarange Columns
-            tail.rename(columns={'Open': 'Open- $', 'Close': 'Close- $', 'Low': 'Low- $', 'High': 'High- $'},
-                        inplace=True, errors='raise')  # Renaming columns
-            style = tail.style.hide_index()
-            self.st.write(style.to_html(), unsafe_allow_html=True)  # Show the table without the index column
-            self.st.write("")
-            self.st.write("")
-            self.st.subheader('Prediction table: ')
-            self.st.caption('Linear regression prediction')
-            predTable = get_pred_table(n_days, data)
-            dispTable = (predTable.tail(predTable.shape[0] - 1)).iloc[:, ::-1]
-            dispTable.rename(columns={'Prediction': 'Prediction- $'}, inplace=True, errors='raise')
-            dispTable['Date'] = dispTable['Date'].dt.strftime('%d/%m/%Y')
-            style = dispTable.style.hide_index()
-            self.st.write(style.to_html(), unsafe_allow_html=True)  # Show the table without the index column
-            self.st.text("")
-            self.plot_raw_data(data, predTable)
-        else:
+        if not selected_stock:
             self.st.warning('Please enter a ticker')
+            return
+
+        with self.st.spinner("Loading..."):
+            data = self.load_data(selected_stock)
+        if data.empty:
+            self.st.error('No such stock')
+            return
+
+        self.st.success("Done!")
+        self.st.subheader('Raw data')
+        tail = data.tail()
+        print(tail)
+        tail['Date'] = tail['Date'].dt.strftime('%d/%m/%Y')
+        tail = tail.reindex(['Date', 'Open', 'Close', 'Low', 'High'], axis=1)  # Reaarange Columns
+        tail.rename(columns={'Open': 'Open- $', 'Close': 'Close- $', 'Low': 'Low- $', 'High': 'High- $'},
+                    inplace=True, errors='raise')  # Renaming columns
+        style = tail.style.hide_index()
+        self.st.write(style.to_html(), unsafe_allow_html=True)  # Show the table without the index column
+        self.st.write("")
+        self.st.write("")
+        self.st.subheader('Prediction table: ')
+        self.st.caption('Linear regression prediction')
+        predTable = get_pred_table(n_days, data)
+        dispTable = (predTable.tail(predTable.shape[0] - 1)).iloc[:, ::-1]
+        dispTable.rename(columns={'Prediction': 'Prediction- $'}, inplace=True, errors='raise')
+        dispTable['Date'] = dispTable['Date'].dt.strftime('%d/%m/%Y')
+        style = dispTable.style.hide_index()
+        self.st.write(style.to_html(), unsafe_allow_html=True)  # Show the table without the index column
+        self.st.text("")
+        self.plot_raw_data(data, predTable)
+
