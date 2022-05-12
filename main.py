@@ -3,22 +3,26 @@ from WalletPage import WalletPage
 from HomePage import HomePage
 from StockPurchaseBot import StockPurchaseBot
 from streamlit_option_menu import option_menu
-import config
+from PortfolioPage import PortfolioPage
+
+
+
 with st.sidebar:
     selected = option_menu("Main Menu", ["Home", 'Wallet', "Stock Trading Bot", "Portfolio"],
-                           icons=['house', 'wallet2', 'robot','clipboard-data'], menu_icon="bar-chart", default_index=1,
+                           icons=['house', 'wallet2', 'robot','clipboard-data'], menu_icon="bar-chart", default_index=0,
                            styles={
         "nav-link-selected": {"background-color": "DarkCyan"}})
+page = None
 
 if selected == 'Home':
-    HomePage = HomePage(st)
-    HomePage.display()
+    page = HomePage(st)
+    page.display()
 if selected == 'Wallet':
-    WalletPage = WalletPage(st)
-    WalletPage.display()
+    page = WalletPage(st)
+    page.display()
 if selected == 'Stock Trading Bot':
-    StockPurchaseBot = StockPurchaseBot(st)
-    StockPurchaseBot.display()
+    page = StockPurchaseBot(st)
+    page.display()
 if selected == 'Portfolio':
-    StockPurchaseBot = StockPurchaseBot(st)
-    StockPurchaseBot.display()
+    page = PortfolioPage(st)
+    page.display()
