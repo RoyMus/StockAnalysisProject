@@ -3,4 +3,4 @@ from WalletBalance import WalletBalance
 
 wallet = WalletBalance(0)
 stockList = {}
-portfolioStocks = 0
+portfolioStocks = []
