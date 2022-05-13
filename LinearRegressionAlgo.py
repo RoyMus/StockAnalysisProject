@@ -3,8 +3,6 @@ import numpy as np
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
 from datetime import timedelta
-import streamlit as st
-from plotly import graph_objects as go
 
 
 def get_pred_table(n_days, data):
