@@ -21,22 +21,20 @@ class StockPurchaseBot:
             with st.spinner('Loading...'):
                 self.st.write('The Current Price is: ', get_amount_to_pay(1, ticker), '$')
             with self.st.form('Stock Watchlist Form'):
-                amountOfStock = self.st.number_input('Please enter the amount of stocks you would like to purchase: ',
-                                                      min_value=0.0, max_value=100.0)
+                amount = self.st.number_input('Please enter the amount of  you would like to deposit: ',
+                                                     min_value=0.0)
                 submitted = self.st.form_submit_button("Submit")
                 if submitted:
-                    with self.st.spinner("Please wait..."):
-                        price = get_amount_to_pay(amountOfStock, ticker)
-                    if price > wallet.getBalance():
+                    if amount > wallet.getBalance():
                         self.st.error('Not Enough Money')
                     else:
                         self.st.balloons()
                         self.st.success('Success...')
-                        wallet.withdraw(price)
+                        wallet.withdraw(amount)
                         if ticker in stockList:
-                            stockList[ticker] += amountOfStock
+                            stockList[ticker] += amount
                         else:
-                            stockList[ticker] = amountOfStock
+                            stockList[ticker] = amount
 
         with self.st.expander('Watch watchlist'):
             i = 0
