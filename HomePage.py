@@ -9,34 +9,36 @@ START = "2015-01-01"
 TODAY = date.today().strftime("%Y-%m-%d")
 
 
+def load_data(ticker):
+    dataframe = yf.download(ticker, START, TODAY)
+    dataframe.drop(["Volume"], axis=1, inplace=True)
+    dataframe.reset_index(inplace=True)  # Makes the date be the first column
+    return dataframe
+
+
+def plot_raw_data(data, predTable):
+    CandleStickFig = go.Figure(data=[go.Candlestick(x=data['Date'],
+                                                    open=data['Open'],
+                                                    high=data['High'],
+                                                    low=data['Low'],
+                                                    close=data['Close'])])
+    CandleStickFig.layout.update(title_text='Candle Stick Chart')
+    predFig = go.Figure()
+    predFig.add_trace(go.Scatter(x=data['Date'], y=data['Adj Close'], name='Stock_Adj_close'))
+    predFig.add_trace(go.Scatter(x=predTable['Date'], y=predTable['Prediction'], name='Prediction'))
+    predFig.layout.update(title_text='Prediction Closing Price')
+    predFig.update_xaxes(title_text='Date')
+    predFig.update_yaxes(title_text='Price')
+    predFig.update_layout(yaxis_tickprefix='$', yaxis_tickformat=',.2f')
+    CandleStickFig.update_layout(yaxis_tickprefix='$', yaxis_tickformat=',.2f')
+    st.plotly_chart(CandleStickFig)
+    st.plotly_chart(predFig)
+
+
 class HomePage:
 
     def __init__(self, webapp):
         self.st = webapp
-
-    def load_data(self, ticker):
-        dataframe = yf.download(ticker, START, TODAY)
-        dataframe.drop(["Volume"], axis=1, inplace=True)
-        dataframe.reset_index(inplace=True)  # Makes the date be the first column
-        return dataframe
-
-    def plot_raw_data(self, data, predTable):
-        CandleStickFig = go.Figure(data=[go.Candlestick(x=data['Date'],
-                                                        open=data['Open'],
-                                                        high=data['High'],
-                                                        low=data['Low'],
-                                                        close=data['Close'])])
-        CandleStickFig.layout.update(title_text='Candle Stick Chart')
-        predFig = go.Figure()
-        predFig.add_trace(go.Scatter(x=data['Date'], y=data['Adj Close'], name='Stock_Adj_close'))
-        predFig.add_trace(go.Scatter(x=predTable['Date'], y=predTable['Prediction'], name='Prediction'))
-        predFig.layout.update(title_text='Prediction Closing Price')
-        predFig.update_xaxes(title_text='Date')
-        predFig.update_yaxes(title_text='Price')
-        predFig.update_layout(yaxis_tickprefix='$', yaxis_tickformat=',.2f')
-        CandleStickFig.update_layout(yaxis_tickprefix='$', yaxis_tickformat=',.2f')
-        st.plotly_chart(CandleStickFig)
-        st.plotly_chart(predFig)
 
     def display(self):
         self.st.title("Stock Prediction App")
@@ -48,7 +50,7 @@ class HomePage:
             return
 
         with self.st.spinner("Loading..."):
-            data = self.load_data(selected_stock)
+            data = load_data(selected_stock)
         if data.empty:
             self.st.error('No such stock')
             return
@@ -74,5 +76,4 @@ class HomePage:
         style = dispTable.style.hide_index()
         self.st.write(style.to_html(), unsafe_allow_html=True)  # Show the table without the index column
         self.st.text("")
-        self.plot_raw_data(data, predTable)
-
+        plot_raw_data(data, predTable)
