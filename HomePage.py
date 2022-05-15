@@ -16,6 +16,12 @@ def load_data(ticker):
     return dataframe
 
 
+def get_analysts_preds(selected_stock):
+    Ticker = yf.Ticker(selected_stock)
+    df = Ticker.recommendations.tail()
+    return df
+
+
 def plot_raw_data(data, predTable):
     CandleStickFig = go.Figure(data=[go.Candlestick(x=data['Date'],
                                                     open=data['Open'],
@@ -58,7 +64,6 @@ class HomePage:
         self.st.success("Done!")
         self.st.subheader('Raw data')
         tail = data.tail()
-        print(tail)
         tail['Date'] = tail['Date'].dt.strftime('%d/%m/%Y')
         tail = tail.reindex(['Date', 'Open', 'Close', 'Low', 'High'], axis=1)  # Reaarange Columns
         tail.rename(columns={'Open': 'Open- $', 'Close': 'Close- $', 'Low': 'Low- $', 'High': 'High- $'},
@@ -70,10 +75,15 @@ class HomePage:
         self.st.subheader('Prediction table: ')
         self.st.caption('Linear regression prediction')
         predTable = get_pred_table(n_days, data)
-        dispTable = (predTable.tail(predTable.shape[0] - 1)).iloc[:, ::-1]
+        dispTable = (predTable.tail(predTable.shape[0] - 1)).iloc[:, ::-1] #Display all but the first
         dispTable.rename(columns={'Prediction': 'Prediction- $'}, inplace=True, errors='raise')
         dispTable['Date'] = dispTable['Date'].dt.strftime('%d/%m/%Y')
         style = dispTable.style.hide_index()
         self.st.write(style.to_html(), unsafe_allow_html=True)  # Show the table without the index column
+        self.st.text("")
+        self.st.subheader("Analysts Predictions:")
+        with self.st.spinner('Loading...'):
+            df = get_analysts_preds(selected_stock)
+        self.st.write(df)
         self.st.text("")
         plot_raw_data(data, predTable)
