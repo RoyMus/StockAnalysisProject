@@ -1,6 +1,7 @@
 import streamlit as st
 from config import stockList, wallet
 import yfinance as yf
+from PortfolioPage import get_market_price
 
 
 class StockPurchaseBot:
@@ -17,7 +18,9 @@ class StockPurchaseBot:
                                               min_value=0.0)
                 submitted = self.st.form_submit_button("Submit")
                 if submitted:
-                    if amount > wallet.getBalance():
+                    price = get_market_price(ticker)
+                    self.st.write(ticker, 'current price is', price, '$')
+                    if amount > wallet.getBalance() and price < amount:
                         self.st.error('Not Enough Money')
                     else:
                         self.st.balloons()
