@@ -24,26 +24,24 @@ def BuySellHold():
     if portfolioStocks:
         for stock in portfolioStocks.copy():
             if get_market_price(stock) > get_lr_prediction(1, load_data(stock)) or calcChange(stock,
-                                                                                              portfolioStocks) < 0:
+                                                                                              portfolioStocks) < 0.5:
                 amount = portfolioStocks.pop(stock)[0]
                 wallet.deposit(amount)
     if stockList:
         for stock in stockList.copy():
-            if get_market_price(stock) < get_lr_prediction(1, load_data(stock)):
+            if get_market_price(stock) < get_lr_prediction(1, load_data(stock)) or calcChange(stock, stockList) > 0.5:
                 amount = stockList.pop(stock)
                 if stock in portfolioStocks:
-                    portfolioStocks[stock][0] += get_shares(amount, stock)
-                    portfolioStocks[stock][1] += amount
+                    portfolioStocks[stock][0] += amount[0]
+                    portfolioStocks[stock][1] += amount[1]
                 else:
-                    portfolioStocks[stock] = [get_shares(amount, stock), amount]
+                    portfolioStocks[stock] = amount
+
 
 
 def calcChange(stock, DictOfStocks):
-    return round(((get_amount(stock, DictOfStocks[stock][0]) - DictOfStocks[stock][1]) / DictOfStocks[stock][1]) * 100, 2)
-
-
-def get_shares(amount, ticker):
-    return amount / get_market_price(ticker)
+    return round(((get_amount(stock, DictOfStocks[stock][0]) - DictOfStocks[stock][1]) / DictOfStocks[stock][1]) * 100,
+                 2)
 
 
 class PortfolioPage:
