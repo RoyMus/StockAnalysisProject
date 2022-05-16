@@ -1,0 +1,30 @@
+@startuml
+'https://plantuml.com/use-case-diagram
+
+skinparam actorStyle awesome
+
+
+
+package Web_App {
+  usecase "Home Page" as UC1
+  usecase "Wallet" as UC2
+  usecase "Portfolio" as UC3
+  usecase "Stock Analysis Bot" as UC4
+  usecase "Search a stock and see data" as UC5
+  usecase "Deposit\Withdraw Money" as UC6
+  usecase "Watch stocks that the bot bought" as UC7
+  usecase "Add stocks to the watchlist of the bot" as UC8
+}
+Streamlit_Host --> User
+User -> (UC1)
+(UC1)--> (UC5)
+User -> (UC2)
+(UC2)--> (UC6)
+(UC6) .. (WalletBalance Class): <<object of>>
+User -> (UC3)
+(UC3)-->  (UC7)
+User --> (UC4)
+(UC4) --> (UC8)
+
+
+@enduml
