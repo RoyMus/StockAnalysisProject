@@ -10,7 +10,7 @@ TODAY = date.today().strftime("%Y-%m-%d")
 
 
 def load_data(ticker):
-    dataframe = yf.download(ticker, START, TODAY)
+    dataframe = yf.download(ticker,None, TODAY)
     dataframe.drop(["Volume"], axis=1, inplace=True)
     dataframe.reset_index(inplace=True)  # Makes the date be the first column
     return dataframe
