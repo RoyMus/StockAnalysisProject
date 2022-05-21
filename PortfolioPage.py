@@ -24,19 +24,18 @@ def BuySellHold():
     if portfolioStocks:
         for stock in portfolioStocks.copy():
             if get_market_price(stock) > get_lr_prediction(1, load_data(stock)) or calcChange(stock,
-                                                                                              portfolioStocks) < 0.5:
+                                                                                              portfolioStocks) < 0.1:
                 amount = portfolioStocks.pop(stock)[0]
                 wallet.deposit(amount)
     if stockList:
         for stock in stockList.copy():
-            if get_market_price(stock) < get_lr_prediction(1, load_data(stock)) or calcChange(stock, stockList) > 0.5:
+            if get_market_price(stock) < get_lr_prediction(1, load_data(stock)) or calcChange(stock, stockList) > 0.05:
                 amount = stockList.pop(stock)
                 if stock in portfolioStocks:
                     portfolioStocks[stock][0] += amount[0]
                     portfolioStocks[stock][1] += amount[1]
                 else:
                     portfolioStocks[stock] = amount
-
 
 
 def calcChange(stock, DictOfStocks):
