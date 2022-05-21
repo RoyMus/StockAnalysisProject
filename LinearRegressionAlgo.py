@@ -1,3 +1,4 @@
+import numpy
 import pandas as pd
 import numpy as np
 from sklearn.linear_model import LinearRegression
@@ -17,11 +18,10 @@ def get_pred_table(n_days, data):
         nextDate = lastDate + timedelta(days=i + 1)
         i += 1
         if 2 <= nextDate.weekday() <= 6:  # Checking that the date added is in the stock market open days
-            lr_prediction = get_lr_prediction((days+1), data)  # Get the predicted price for the number of days selected
-            lr_prediction_array = np.append(lr_prediction_array, lr_prediction)
             predDates.append(nextDate)
             days += 1
-
+    lr_prediction = get_lr_prediction(n_days, data)  # Get the predicted price for the number of days selected
+    lr_prediction_array = np.append(lr_prediction_array, lr_prediction)
     predTable['Prediction'] = lr_prediction_array
     predTable['Date'] = np.array(predDates)
     return predTable
@@ -52,7 +52,8 @@ def get_lr_prediction(n_days, data):
     # The best possible score is 1.0
     lr_confidence = lr.score(x_test, y_test)
     # Set x_forecast equal to the last 'n' rows of the original data set from Adj. Close column
-    x_forecast = np.array(df.drop(['Prediction'], axis=1))[-1:]
+    x_forecast = np.array(df.drop(['Prediction'], axis=1))[-forecast_out:]
+    x_forecast = numpy.flip(x_forecast)#flipping the data in order to start predicting from the last price
     # Print linear regression model predictions for the next  day
     lr_prediction = lr.predict(x_forecast)
     return lr_prediction
