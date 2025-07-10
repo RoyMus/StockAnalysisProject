@@ -29,10 +29,11 @@ source venv/bin/activate  # macOS/Linux
 .\venv\Scripts\activate   # Windows
 
 pip install -r requirements.txt
-
+```
+---
 Dependencies include: pandas, matplotlib, requests, pytz, google-generativeai, Pillow, streamlit
-
-⚙️ Configuration
+---
+## ⚙️ Configuration
 Alpha Vantage API Key
 
 Sign up at AlphaVantage.co
@@ -63,7 +64,8 @@ Edit
 ├── marketapp.py                # (Optional) Streamlit web interface
 ├── requirements.txt            # Python dependencies
 └── README.md                   # This file
-🧩 Usage
+---
+## 🧩 Usage
 As a script
 bash
 Copy
@@ -96,50 +98,31 @@ analyzer.plot_stock_data(df, "AAPL", "NASDAQ", "out.png")
 ai = AIInsights(GOOGLE_AI_KEY)
 insights = ai.get_ai_insights("out.png", "AAPL", "NASDAQ")
 print(insights)
-🌟 Contribute
+## 🌟 Contribute
 Contributions are welcome! You could help by:
 
-🧠 Adding new technical indicators
+- 🧠 Adding new technical indicators
 
-🌍 Supporting additional markets (e.g. BSE, LSE)
+- 🌍 Supporting additional markets (e.g. BSE, LSE)
 
-💡 Improving visualization (e.g. candlestick charts)
+- 💡 Improving visualization (e.g. candlestick charts)
 
-🎨 Enhancing the Streamlit app UI/UX
+- 🎨 Enhancing the Streamlit app UI/UX
 
-🧪 Implementing more AI analysis modes (e.g. sentiment, fundamental)
-
-⚠️ Disclaimer
+- 🧪 Implementing more AI analysis modes (e.g. sentiment, fundamental)
+---
+## ⚠️ Disclaimer
 This tool is for educational and informational purposes only.
 It does not constitute financial advice. Use insights responsibly, and consult a licensed financial advisor before making investment decisions.
-
-📄 License
+---
+##📄 License
 MIT License
-
-📞 Contact
+---
+## 📞 Contact
 Questions, feedback, or suggestions?
 Reach out to @RoyMus via GitHub Discussions or Issues.
-
-📝 Changelog
+---
+## 📝 Changelog
 Version	Date	Changes
 0.1.0	2025‑07‑10	Initial release with core features
-
-markdown
-Copy
-Edit
-
 ---
-
-### ✅ Next Steps
-
-- Update the **Requirements** section if you add/remove dependencies
-- Add screenshots or demo GIFs (e.g., from `marketapp.py`)
-- Populate the **Changelog** as you evolve the project
-- Consider adding:
-  - A `Dockerfile`
-  - CI tests
-  - Coverage report
-  - GitHub Actions workflow
-
-This README offers a clean, structured launchpad—readable, informative, and welcoming for collaborators. Let me know if you’d like help integrating additional details or assets!
-::contentReference[oaicite:0]{index=0}
