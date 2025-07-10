@@ -49,21 +49,19 @@ Google Gemini API Key
 Obtain from Google AI Studio
 
 Set it in ai_insights_handler.py:
-
-python
-Copy
-Edit
 API_KEY = "YOUR_GOOGLE_AI_KEY"
-📦 Project Structure
-text
-Copy
-Edit
+
+---
+
+## 📦 Project Structure
+<pre>
 .
 ├── stock_utility_handler.py    # Data fetching & visualization
 ├── ai_insights_handler.py      # Wraps Gemini model for insight generation
 ├── marketapp.py                # (Optional) Streamlit web interface
 ├── requirements.txt            # Python dependencies
 └── README.md                   # This file
+</pre>
 ---
 ## 🧩 Usage
 As a script
@@ -115,7 +113,7 @@ Contributions are welcome! You could help by:
 This tool is for educational and informational purposes only.
 It does not constitute financial advice. Use insights responsibly, and consult a licensed financial advisor before making investment decisions.
 ---
-##📄 License
+## 📄 License
 MIT License
 ---
 ## 📞 Contact
