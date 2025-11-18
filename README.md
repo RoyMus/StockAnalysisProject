@@ -26,26 +26,6 @@ pip install -r requirements.txt
 ```
 ---
 Dependencies include: pandas, matplotlib, requests, pytz, google-generativeai, Pillow, streamlit
----
-## ⚙️ Configuration
-Alpha Vantage API Key
-
-Sign up at AlphaVantage.co
-
-Set it in stock_utility_handler.py:
-
-python
-Copy
-Edit
-API_KEY = "YOUR_ALPHA_VANTAGE_KEY"
-Google Gemini API Key
-
-Obtain from Google AI Studio
-
-Set it in ai_insights_handler.py:
-API_KEY = "YOUR_GOOGLE_AI_KEY"
-
----
 
 ## Project Structure
 <pre>
@@ -69,6 +49,7 @@ MIT License
 Version	Date	Changes
 0.1.0	2025‑07‑10	Initial release with core features
 ---
+
 
 
 
