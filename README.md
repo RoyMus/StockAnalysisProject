@@ -6,14 +6,8 @@ URL: https://roymus-stockanalysisproject-main-e46is0.streamlit.app/
 
 ## Features
 
-- Fetches historical stock data via Alpha Vantage API
-- Converts raw JSON to annotated `pandas.DataFrame`
-- Visualizes:
-  - Daily closing price
-  - Trading volume
-  - 7-day and 20-day moving averages
-- Generates AI insights on stock trends using Google’s Gemini model
-- Optionally wraps the pipeline in a **Streamlit app** for interactive exploration
+- Fetches historical stock data via YFinance API
+- Tries to predict x days forward using Linear Regression on the relationship between X price, Y time
 
 ---
 
@@ -75,5 +69,6 @@ MIT License
 Version	Date	Changes
 0.1.0	2025‑07‑10	Initial release with core features
 ---
+
 
 
