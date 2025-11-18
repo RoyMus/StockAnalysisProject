@@ -1,7 +1,7 @@
 # StockAnalysisProject 📈
 
-**A Python-based tool for analyzing and visualizing stock data, integrating technical indicators and AI-powered insights.**
-
+**A Python-based tool that tries to predict stock prices using Linear Regression**
+URL: https://roymus-stockanalysisproject-main-e46is0.streamlit.app/
 ---
 
 ## Features
@@ -75,4 +75,5 @@ MIT License
 Version	Date	Changes
 0.1.0	2025‑07‑10	Initial release with core features
 ---
+
 
