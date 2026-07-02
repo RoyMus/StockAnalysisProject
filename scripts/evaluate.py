@@ -38,6 +38,7 @@ from stockanalysis.validation import (  # noqa: E402
     block_bootstrap_sharpe,
     monte_carlo_random_entry,
     permutation_test_ic,
+    pooled_ic_test,
 )
 
 # Signal variants for ablation runs. Each is a pure function of an OHLCV
@@ -103,7 +104,7 @@ def _make_synthetic(seed: int, n: int = 1000) -> pd.DataFrame:
 
 def _evaluate_one(
     ticker: str, history: pd.DataFrame, signal_fn: object = None
-) -> TickerEval | None:
+) -> tuple[TickerEval, tuple[pd.Series, pd.Series]] | None:
     result: BacktestResult | None = backtest_signal(
         history,
         ticker=ticker,
@@ -121,7 +122,7 @@ def _evaluate_one(
     mc = monte_carlo_random_entry(bh_daily, effective_position, seed=0)
     bs = block_bootstrap_sharpe(strat_daily, seed=0)
 
-    return TickerEval(
+    evaluation = TickerEval(
         ticker=ticker,
         n_signals=result.n_signals,
         ic=result.ic_spearman,
@@ -134,6 +135,7 @@ def _evaluate_one(
         sharpe_p5=bs.p5 if bs else None,
         sharpe_p95=bs.p95 if bs else None,
     )
+    return evaluation, (result.scores, result.forward_returns)
 
 
 def _fmt(value: float | None, spec: str = ".3f") -> str:
@@ -168,22 +170,31 @@ def _run_ablation(basket: list[tuple[str, pd.DataFrame]]) -> None:
     """
     summary_rows = []
     for variant_name, signal_fn in SIGNAL_VARIANTS.items():
-        evals = [e for t, h in basket if (e := _evaluate_one(t, h, signal_fn))]
+        outcomes = [
+            out for t, h in basket if (out := _evaluate_one(t, h, signal_fn)) is not None
+        ]
+        evals = [e for e, _pair in outcomes]
+        pairs = [pair for _e, pair in outcomes]
         ics = [e.ic for e in evals if e.ic is not None]
         mcs = [e.mc_percentile for e in evals if e.mc_percentile is not None]
         sharpes = [e.strat_sharpe for e in evals if e.strat_sharpe is not None]
-        n_sig = sum(1 for e in evals if e.ic_p is not None and e.ic_p < 0.05)
+        pooled = pooled_ic_test(pairs, seed=0)
         summary_rows.append(
             {
                 "variant": variant_name,
                 "names": len(evals),
                 "mean IC": f"{np.mean(ics):+.3f}" if ics else "n/a",
-                "IC sig (p<.05)": f"{n_sig}/{len(evals)}",
+                "pooled IC p": f"{pooled.p_value:.3f}" if pooled else "n/a",
                 "mean MC pct": f"{np.mean(mcs):.0f}" if mcs else "n/a",
                 "mean Sharpe": f"{np.mean(sharpes):.2f}" if sharpes else "n/a",
             }
         )
     print(pd.DataFrame(summary_rows).to_string(index=False))
+    print(
+        "\nDecision rule: prefer the variant with the best pooled IC p-value AND\n"
+        "mean Sharpe on the dev basket; confirm the single chosen variant on the\n"
+        "holdout basket before adopting it."
+    )
 
 
 def main() -> int:
@@ -209,33 +220,23 @@ def main() -> int:
         _run_ablation(basket)
         return 0
 
-    rows: list[TickerEval] = []
     if args.synthetic:
         print("SYNTHETIC RUN — methodology check only; says nothing about real markets.\n")
-        for seed in range(10):
-            evaluation = _evaluate_one(f"SYN{seed:02d}", _make_synthetic(seed))
-            if evaluation:
-                rows.append(evaluation)
+    elif args.holdout:
+        print(
+            "HOLDOUT RUN — confirmation only. If you are still iterating on the\n"
+            "signal, stop: repeated holdout checks turn it into a second dev set.\n"
+        )
     else:
-        from stockanalysis.data import get_price_history
+        print(f"Evaluating DEV basket: {', '.join(DEV_TICKERS)}\n")
 
-        tickers = HOLDOUT_TICKERS if args.holdout else DEV_TICKERS
-        basket = "HOLDOUT" if args.holdout else "DEV"
-        if args.holdout:
-            print(
-                "HOLDOUT RUN — confirmation only. If you are still iterating on the\n"
-                "signal, stop: repeated holdout checks turn it into a second dev set.\n"
-            )
-        print(f"Evaluating {basket} basket: {', '.join(tickers)}\n")
-        for ticker in tickers:
-            try:
-                history = get_price_history(ticker, period=PERIOD)
-            except Exception as exc:  # noqa: BLE001 - report and continue
-                print(f"  {ticker}: fetch failed ({exc})")
-                continue
-            evaluation = _evaluate_one(ticker, history)
-            if evaluation:
-                rows.append(evaluation)
+    rows: list[TickerEval] = []
+    pairs: list[tuple[pd.Series, pd.Series]] = []
+    for ticker, history in _load_basket(args):
+        outcome = _evaluate_one(ticker, history)
+        if outcome:
+            rows.append(outcome[0])
+            pairs.append(outcome[1])
 
     if not rows:
         print("No evaluable tickers.")
@@ -262,14 +263,19 @@ def main() -> int:
 
     ics = [r.ic for r in rows if r.ic is not None]
     mcs = [r.mc_percentile for r in rows if r.mc_percentile is not None]
-    sig = [r for r in rows if r.ic_p is not None and r.ic_p < 0.05]
     print(f"\nMean IC: {np.mean(ics):+.3f} across {len(ics)} names")
-    print(f"IC significant (p<0.05) on {len(sig)}/{len(rows)} names")
+    pooled = pooled_ic_test(pairs, seed=0)
+    if pooled:
+        verdict = "SIGNIFICANT" if pooled.significant else "not significant"
+        print(
+            f"Pooled basket test: mean IC {pooled.observed:+.3f}, "
+            f"p={pooled.p_value:.3f} ({verdict} at 5%)"
+        )
     if mcs:
         print(f"Mean Monte Carlo timing percentile: {np.mean(mcs):.0f}")
     print(
-        "\nReminder: a positive mean IC with mostly non-significant per-name p-values\n"
-        "is normal at this sample size; judge the basket, not single names."
+        "\nReminder: per-name p-values have little power at this sample size —\n"
+        "the pooled basket test is the load-bearing number here."
     )
     return 0
 

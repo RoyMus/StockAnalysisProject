@@ -32,8 +32,9 @@ Methodology, in short:
      ``exit_threshold`` (hysteresis, to avoid whipsawing around a single
      level), and compare its equity curve to buy-and-hold.
 
-This is research tooling, not a production trading system: no transaction
-costs, slippage, taxes, or position sizing are modeled.
+This is research tooling, not a production trading system: a flat
+per-trade cost (``cost_bps``, default 10 bps) is charged on every position
+change, but slippage, taxes, and position sizing are not modeled.
 """
 
 from __future__ import annotations
@@ -191,6 +192,7 @@ def _simulate_strategy(
     warmup: int,
     entry_threshold: float,
     exit_threshold: float,
+    cost_bps: float,
 ) -> tuple[pd.Series, pd.Series, pd.Series, pd.Series, pd.Series]:
     """Simulate the score-gated long/flat strategy on daily closes.
 
@@ -203,6 +205,7 @@ def _simulate_strategy(
     window = history.iloc[warmup:]
     close = window["Close"]
     daily_returns = close.pct_change().fillna(0.0)
+    cost_rate = cost_bps / 10_000.0
 
     score_ff = scores.reindex(window.index, method="ffill")
     # Neutral (flat-inducing) fallback for any bars before the first
@@ -220,7 +223,10 @@ def _simulate_strategy(
         positions.append(1.0 if in_position else 0.0)
     position = pd.Series(positions, index=window.index)
 
-    strategy_daily_returns = position.shift(1).fillna(0.0) * daily_returns
+    # Charge ``cost_bps`` on every position change (entry and exit alike) —
+    # a costless backtest flatters any signal that trades often.
+    trades = position.diff().abs().fillna(position.iloc[0] if len(position) else 0.0)
+    strategy_daily_returns = position.shift(1).fillna(0.0) * daily_returns - trades * cost_rate
     buyhold_daily_returns = daily_returns
 
     strategy_equity = (1.0 + strategy_daily_returns).cumprod()
@@ -244,6 +250,7 @@ def backtest_signal(
     entry_threshold: float = 60.0,
     exit_threshold: float = 45.0,
     signal_fn: Callable[[pd.DataFrame], float | None] | None = None,
+    cost_bps: float = 10.0,
 ) -> BacktestResult | None:
     """Backtest the price-only composite (technicals + trend/mean-reversion).
 
@@ -274,7 +281,7 @@ def backtest_signal(
     ic_spearman = _information_coefficient(scores, forward_returns)
 
     strategy_equity, buyhold_equity, strategy_daily, buyhold_daily, position = (
-        _simulate_strategy(history, scores, warmup, entry_threshold, exit_threshold)
+        _simulate_strategy(history, scores, warmup, entry_threshold, exit_threshold, cost_bps)
     )
 
     strategy_return = float(strategy_equity.iloc[-1] - 1.0) if len(strategy_equity) else 0.0
@@ -339,5 +346,6 @@ def summary_table(result: BacktestResult) -> pd.DataFrame:
         ("Buy & hold Sharpe (annualized)", _fmt_ratio(result.buyhold_sharpe)),
         ("Strategy max drawdown", _fmt_pct(result.strategy_max_drawdown)),
         ("Buy & hold max drawdown", _fmt_pct(result.buyhold_max_drawdown)),
+        ("Transaction cost assumption", "10 bps per position change"),
     ]
     return pd.DataFrame(rows, columns=["Metric", "Value"])

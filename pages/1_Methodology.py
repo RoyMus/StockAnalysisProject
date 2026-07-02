@@ -233,8 +233,9 @@ validation of the whole product.
    buy-and-hold.
 
 **Honest limitations:** this is research tooling, not a production trading
-system. **No transaction costs, slippage, taxes, or position sizing are
-modeled.** Past predictiveness is no guarantee of future predictiveness,
+system. **A flat 10 bps cost per position change is charged; slippage,
+taxes, and position sizing are not modeled.** Past predictiveness is no
+guarantee of future predictiveness,
 and the walk-forward loop re-scores overlapping windows of the same price
 series, so successive signals are not independent observations.
 """

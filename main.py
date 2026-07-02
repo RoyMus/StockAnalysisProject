@@ -366,8 +366,8 @@ def _render_backtest(history: pd.DataFrame, ticker: str, period: str) -> None:
         "snapshot only — there's no historical P/E, rating, or revenue series to "
         "replay without leaking the future into the past. Treat these results as a "
         "read on the price/technical half of the signal, not a validation of the "
-        "full five-pillar composite. No transaction costs, slippage, or position "
-        "sizing are modeled."
+        "full five-pillar composite. A flat 10 bps cost is charged per position "
+        "change; slippage and position sizing are not modeled."
     )
 
     cache_key = (ticker.upper(), period)

@@ -127,7 +127,8 @@ python scripts/evaluate.py --synthetic   # offline methodology check
   missing fundamentals.
 - Valuation bands are classic absolute heuristics, not sector-relative — a
   software company and a bank are held to the same P/E scale.
-- The backtest models no transaction costs, slippage, or taxes.
+- The backtest charges a flat 10 bps per position change but models no
+  slippage or taxes.
 - ARIMA extrapolates historical patterns; it cannot know about earnings
   surprises, news, or regime changes.
 

@@ -17,6 +17,7 @@ from stockanalysis.validation import (
     monte_carlo_random_entry,
     permutation_test_hit_rate,
     permutation_test_ic,
+    pooled_ic_test,
 )
 
 
@@ -126,6 +127,38 @@ def test_monte_carlo_all_flat_returns_none(index_400):
     daily = pd.Series(0.01, index=index_400)
     pos = pd.Series(0.0, index=index_400)
     assert monte_carlo_random_entry(daily, pos) is None
+
+
+def _signal_pair(seed: int, informative: bool, n: int = 200):
+    rng = np.random.default_rng(seed)
+    idx = pd.bdate_range("2024-01-01", periods=n)
+    rets = pd.Series(rng.normal(0.001, 0.02, n), index=idx)
+    if informative:
+        scores = (50 + 600 * rets + rng.normal(0, 12, n)).clip(0, 100)
+    else:
+        scores = pd.Series(rng.uniform(0, 100, n), index=idx)
+    return scores, rets
+
+
+def test_pooled_ic_detects_basket_wide_signal():
+    pairs = [_signal_pair(seed, informative=True) for seed in range(6)]
+    result = pooled_ic_test(pairs, n_permutations=300, seed=1)
+    assert result is not None
+    assert result.observed > 0.3
+    assert result.p_value < 0.05
+
+
+def test_pooled_ic_rejects_noise_basket():
+    pairs = [_signal_pair(seed, informative=False) for seed in range(6)]
+    result = pooled_ic_test(pairs, n_permutations=300, seed=1)
+    assert result is not None
+    assert abs(result.observed) < 0.1
+    assert result.p_value > 0.05
+
+
+def test_pooled_ic_needs_two_names(index_400):
+    pairs = [_signal_pair(0, informative=True)]
+    assert pooled_ic_test(pairs) is None
 
 
 def test_block_bootstrap_brackets_observed(index_400):

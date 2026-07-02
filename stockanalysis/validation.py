@@ -128,6 +128,73 @@ def permutation_test_ic(
     )
 
 
+def pooled_ic_test(
+    pairs: list[tuple[pd.Series, pd.Series]],
+    n_permutations: int = 1000,
+    seed: int = 0,
+) -> PermutationTestResult | None:
+    """Basket-level permutation test of the *mean* IC across names.
+
+    Single names rarely reach significance: with ~150 overlapping
+    observations the rotation null is wide (verified empirically — an
+    injected-trend signal with per-name IC ≈ +0.26 still tested 0/8
+    significant name-by-name). Averaging ICs across names shrinks the null
+    roughly with sqrt(n_names) and recovers real power.
+
+    Each permutation trial applies the SAME relative rotation offset to
+    every name's return series. With date-aligned series this preserves the
+    cross-sectional correlation between names (stocks share a market
+    factor), so the null doesn't overstate the independence of the names —
+    the classic way pooled financial significance tests flatter themselves.
+
+    ``pairs`` is a list of (scores, forward_returns) per name.
+    """
+    prepared: list[tuple[np.ndarray, np.ndarray]] = []
+    observed_ics: list[float] = []
+    for scores, forward_returns in pairs:
+        aligned = pd.concat(
+            [scores.rename("s"), forward_returns.rename("r")], axis=1
+        ).dropna()
+        if len(aligned) < 10:
+            continue
+        ic = _rank_ic(aligned["s"], aligned["r"])
+        if pd.isna(ic):
+            continue
+        observed_ics.append(ic)
+        prepared.append(
+            (aligned["s"].rank().to_numpy(), aligned["r"].rank().to_numpy())
+        )
+    if len(prepared) < 2:
+        return None
+
+    observed = float(np.mean(observed_ics))
+    rng = np.random.default_rng(seed)
+    # One fractional offset per trial, scaled to each name's own length, so
+    # aligned series stay aligned under the shared rotation. Offsets below
+    # 10% (or above 90%) are excluded: a rotation smaller than the signal's
+    # own decorrelation length leaves the score/return alignment partially
+    # intact, which fattens the null and destroys power against real
+    # effects (a rotation by less than the forward horizon barely breaks
+    # the pairing at all).
+    fractions = rng.uniform(0.10, 0.90, size=n_permutations)
+    null = np.empty(n_permutations)
+    for i, frac in enumerate(fractions):
+        trial_ics = []
+        for s_ranks, r_ranks in prepared:
+            k = max(1, int(frac * len(r_ranks)))
+            trial_ics.append(np.corrcoef(s_ranks, np.roll(r_ranks, k))[0, 1])
+        null[i] = np.mean(trial_ics)
+    p_value = (np.sum(np.abs(null) >= abs(observed)) + 1) / (n_permutations + 1)
+    return PermutationTestResult(
+        metric=f"Pooled mean IC ({len(prepared)} names)",
+        observed=observed,
+        null_mean=float(null.mean()),
+        null_std=float(null.std()),
+        p_value=float(p_value),
+        n_permutations=n_permutations,
+    )
+
+
 def permutation_test_hit_rate(
     scores: pd.Series,
     forward_returns: pd.Series,
