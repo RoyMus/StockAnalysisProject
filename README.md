@@ -70,6 +70,11 @@ one answers it carefully:
   across a development basket of tickers, with a separate holdout basket
   reserved for confirming finished changes, so signal tweaks aren't curve-fit
   to one basket's noise.
+- **A real, confirmed finding** — a pre-registered study on 20 real S&P 500
+  names (2005–2022) found the mean-reversion signal carries genuine 21-day
+  predictive information (holdout pooled IC +0.059, p = 0.004) while the
+  momentum signal anti-predicts. Full methodology, results, and caveats in
+  [`docs/SIGNAL_FINDINGS.md`](docs/SIGNAL_FINDINGS.md).
 
 ## Architecture
 

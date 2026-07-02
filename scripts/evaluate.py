@@ -34,6 +34,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from stockanalysis.backtest import BacktestResult, backtest_signal  # noqa: E402
 from stockanalysis.pillars import score_technicals, score_trend_reversion  # noqa: E402
+from stockanalysis.signals import momentum_score, reversion_score  # noqa: E402
 from stockanalysis.validation import (  # noqa: E402
     block_bootstrap_sharpe,
     monte_carlo_random_entry,
@@ -45,10 +46,14 @@ from stockanalysis.validation import (  # noqa: E402
 # prefix returning a 0-100 score (or None). Keep this list short and
 # hypothesis-driven: every variant evaluated is another chance to fit noise,
 # so only add one when there's a reason to believe it could matter.
+# The close-only variants were validated on real bundled data — see
+# docs/SIGNAL_FINDINGS.md for the study (reversion carried the signal).
 SIGNAL_VARIANTS: dict[str, object] = {
     "combined (baseline)": None,  # backtest_signal's default
     "technicals only": lambda df: score_technicals(df).score,
     "trend/mean-rev only": lambda df: score_trend_reversion(df).score,
+    "close-only reversion": lambda df: reversion_score(df["Close"]),
+    "close-only momentum": lambda df: momentum_score(df["Close"]),
 }
 
 # Dev basket: iterate signal design against these. Deliberately mixed:
