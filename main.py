@@ -8,7 +8,6 @@ deterministic synthetic data (see ``stockanalysis.demo``).
 
 from __future__ import annotations
 
-import numpy as np
 import pandas as pd
 import requests
 import streamlit as st
@@ -99,19 +98,17 @@ def _cached_backtest_bundle(ticker: str, period: str, _history: pd.DataFrame) ->
     if result is None:
         return {"result": None}
 
-    # Reconstruct the daily position series from the two equity curves so we
-    # can feed monte_carlo_random_entry, which needs position and market
-    # returns separately rather than pre-combined.
     daily_returns = result.buyhold_equity.pct_change().fillna(0.0)
     strategy_daily_returns = result.strategy_equity.pct_change().fillna(0.0)
-    position = (strategy_daily_returns / daily_returns.replace(0.0, np.nan)).fillna(0.0)
-    position = position.clip(0.0, 1.0).round()
+    # monte_carlo_random_entry evaluates timing of the *effective* exposure,
+    # which lags the position decision by one bar in the simulation.
+    effective_position = result.position.shift(1).fillna(0.0)
 
     return {
         "result": result,
         "perm_ic": permutation_test_ic(result.scores, result.forward_returns),
         "perm_hit": permutation_test_hit_rate(result.scores, result.forward_returns),
-        "monte_carlo": monte_carlo_random_entry(daily_returns, position),
+        "monte_carlo": monte_carlo_random_entry(daily_returns, effective_position),
         "bootstrap": block_bootstrap_sharpe(strategy_daily_returns),
     }
 

@@ -38,6 +38,7 @@ costs, slippage, taxes, or position sizing are modeled.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 
 import pandas as pd
@@ -71,6 +72,7 @@ class BacktestResult:
     ic_spearman: float | None
     strategy_equity: pd.Series
     buyhold_equity: pd.Series
+    position: pd.Series  # daily 0/1 exposure of the simulated strategy
     strategy_return: float
     buyhold_return: float
     strategy_sharpe: float | None
@@ -90,7 +92,11 @@ def _combined_score(history: pd.DataFrame) -> float | None:
 
 
 def _build_signal_series(
-    history: pd.DataFrame, horizon_days: int, step: int, warmup: int
+    history: pd.DataFrame,
+    horizon_days: int,
+    step: int,
+    warmup: int,
+    signal_fn: Callable[[pd.DataFrame], float | None],
 ) -> tuple[pd.Series, pd.Series]:
     """Score every ``step``-th bar from ``warmup`` on, paired with its forward return.
 
@@ -107,7 +113,7 @@ def _build_signal_series(
     forward_returns: dict[pd.Timestamp, float] = {}
 
     for i in range(warmup, len(history) - horizon_days, step):
-        combined = _combined_score(history.iloc[: i + 1])
+        combined = signal_fn(history.iloc[: i + 1])
         if combined is None:
             continue
         date = history.index[i]
@@ -185,7 +191,7 @@ def _simulate_strategy(
     warmup: int,
     entry_threshold: float,
     exit_threshold: float,
-) -> tuple[pd.Series, pd.Series, pd.Series, pd.Series]:
+) -> tuple[pd.Series, pd.Series, pd.Series, pd.Series, pd.Series]:
     """Simulate the score-gated long/flat strategy on daily closes.
 
     The score only updates every ``step`` bars (see ``_build_signal_series``);
@@ -220,7 +226,13 @@ def _simulate_strategy(
     strategy_equity = (1.0 + strategy_daily_returns).cumprod()
     buyhold_equity = (1.0 + buyhold_daily_returns).cumprod()
 
-    return strategy_equity, buyhold_equity, strategy_daily_returns, buyhold_daily_returns
+    return (
+        strategy_equity,
+        buyhold_equity,
+        strategy_daily_returns,
+        buyhold_daily_returns,
+        position,
+    )
 
 
 def backtest_signal(
@@ -231,8 +243,13 @@ def backtest_signal(
     warmup: int = 220,
     entry_threshold: float = 60.0,
     exit_threshold: float = 45.0,
+    signal_fn: Callable[[pd.DataFrame], float | None] | None = None,
 ) -> BacktestResult | None:
     """Backtest the price-only composite (technicals + trend/mean-reversion).
+
+    ``signal_fn`` overrides the default combined score with any pure
+    function of an OHLCV prefix returning a 0-100 score (or None) — this is
+    what ablation studies plug alternative signal variants into.
 
     Returns ``None`` if ``history`` is too short to produce a meaningful
     sample (``len(history) < warmup + horizon_days + 30``).
@@ -243,7 +260,9 @@ def backtest_signal(
     if len(history) < warmup + horizon_days + 30:
         return None
 
-    scores, forward_returns = _build_signal_series(history, horizon_days, step, warmup)
+    scores, forward_returns = _build_signal_series(
+        history, horizon_days, step, warmup, signal_fn or _combined_score
+    )
 
     hit_rate_bullish, n_bullish = _hit_rate(
         scores, forward_returns, _BULLISH_HIT_THRESHOLD, bullish=True
@@ -254,8 +273,8 @@ def backtest_signal(
     quintile_returns = _quintile_returns(scores, forward_returns)
     ic_spearman = _information_coefficient(scores, forward_returns)
 
-    strategy_equity, buyhold_equity, strategy_daily, buyhold_daily = _simulate_strategy(
-        history, scores, warmup, entry_threshold, exit_threshold
+    strategy_equity, buyhold_equity, strategy_daily, buyhold_daily, position = (
+        _simulate_strategy(history, scores, warmup, entry_threshold, exit_threshold)
     )
 
     strategy_return = float(strategy_equity.iloc[-1] - 1.0) if len(strategy_equity) else 0.0
@@ -275,6 +294,7 @@ def backtest_signal(
         ic_spearman=ic_spearman,
         strategy_equity=strategy_equity,
         buyhold_equity=buyhold_equity,
+        position=position,
         strategy_return=strategy_return,
         buyhold_return=buyhold_return,
         strategy_sharpe=_annualized_sharpe(strategy_daily),

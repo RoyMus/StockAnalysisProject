@@ -33,11 +33,22 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from stockanalysis.backtest import BacktestResult, backtest_signal  # noqa: E402
+from stockanalysis.pillars import score_technicals, score_trend_reversion  # noqa: E402
 from stockanalysis.validation import (  # noqa: E402
     block_bootstrap_sharpe,
     monte_carlo_random_entry,
     permutation_test_ic,
 )
+
+# Signal variants for ablation runs. Each is a pure function of an OHLCV
+# prefix returning a 0-100 score (or None). Keep this list short and
+# hypothesis-driven: every variant evaluated is another chance to fit noise,
+# so only add one when there's a reason to believe it could matter.
+SIGNAL_VARIANTS: dict[str, object] = {
+    "combined (baseline)": None,  # backtest_signal's default
+    "technicals only": lambda df: score_technicals(df).score,
+    "trend/mean-rev only": lambda df: score_trend_reversion(df).score,
+}
 
 # Dev basket: iterate signal design against these. Deliberately mixed:
 # mega-cap tech, industrial, financial, healthcare, energy, consumer.
@@ -90,9 +101,15 @@ def _make_synthetic(seed: int, n: int = 1000) -> pd.DataFrame:
     )
 
 
-def _evaluate_one(ticker: str, history: pd.DataFrame) -> TickerEval | None:
+def _evaluate_one(
+    ticker: str, history: pd.DataFrame, signal_fn: object = None
+) -> TickerEval | None:
     result: BacktestResult | None = backtest_signal(
-        history, ticker=ticker, horizon_days=HORIZON, step=STEP
+        history,
+        ticker=ticker,
+        horizon_days=HORIZON,
+        step=STEP,
+        signal_fn=signal_fn,  # type: ignore[arg-type]
     )
     if result is None:
         return None
@@ -100,8 +117,8 @@ def _evaluate_one(ticker: str, history: pd.DataFrame) -> TickerEval | None:
     ic_test = permutation_test_ic(result.scores, result.forward_returns, seed=0)
     strat_daily = result.strategy_equity.pct_change().dropna()
     bh_daily = result.buyhold_equity.pct_change().dropna()
-    position = (strat_daily.abs() > 1e-12).astype(float)
-    mc = monte_carlo_random_entry(bh_daily, position, seed=0)
+    effective_position = result.position.shift(1).fillna(0.0)
+    mc = monte_carlo_random_entry(bh_daily, effective_position, seed=0)
     bs = block_bootstrap_sharpe(strat_daily, seed=0)
 
     return TickerEval(
@@ -123,13 +140,74 @@ def _fmt(value: float | None, spec: str = ".3f") -> str:
     return format(value, spec) if value is not None else "n/a"
 
 
+def _load_basket(args: argparse.Namespace) -> list[tuple[str, pd.DataFrame]]:
+    """Fetch (or synthesize) the histories once so ablations reuse them."""
+    if args.synthetic:
+        return [(f"SYN{seed:02d}", _make_synthetic(seed)) for seed in range(10)]
+
+    from stockanalysis.data import get_price_history
+
+    tickers = HOLDOUT_TICKERS if args.holdout else DEV_TICKERS
+    loaded: list[tuple[str, pd.DataFrame]] = []
+    for ticker in tickers:
+        try:
+            loaded.append((ticker, get_price_history(ticker, period=PERIOD)))
+        except Exception as exc:  # noqa: BLE001 - report and continue
+            print(f"  {ticker}: fetch failed ({exc})")
+    return loaded
+
+
+def _run_ablation(basket: list[tuple[str, pd.DataFrame]]) -> None:
+    """Compare signal variants on the same histories, basket-level view only.
+
+    Per-name p-values are deliberately not shown here: with several variants
+    and many names, cherry-picking the significant cells is exactly the
+    multiple-comparisons trap this harness exists to avoid. Compare variants
+    on basket-level aggregates, pick at most one change, then confirm on the
+    holdout basket.
+    """
+    summary_rows = []
+    for variant_name, signal_fn in SIGNAL_VARIANTS.items():
+        evals = [e for t, h in basket if (e := _evaluate_one(t, h, signal_fn))]
+        ics = [e.ic for e in evals if e.ic is not None]
+        mcs = [e.mc_percentile for e in evals if e.mc_percentile is not None]
+        sharpes = [e.strat_sharpe for e in evals if e.strat_sharpe is not None]
+        n_sig = sum(1 for e in evals if e.ic_p is not None and e.ic_p < 0.05)
+        summary_rows.append(
+            {
+                "variant": variant_name,
+                "names": len(evals),
+                "mean IC": f"{np.mean(ics):+.3f}" if ics else "n/a",
+                "IC sig (p<.05)": f"{n_sig}/{len(evals)}",
+                "mean MC pct": f"{np.mean(mcs):.0f}" if mcs else "n/a",
+                "mean Sharpe": f"{np.mean(sharpes):.2f}" if sharpes else "n/a",
+            }
+        )
+    print(pd.DataFrame(summary_rows).to_string(index=False))
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--holdout", action="store_true", help="run the holdout basket")
     parser.add_argument(
         "--synthetic", action="store_true", help="seeded synthetic data (no network)"
     )
+    parser.add_argument(
+        "--ablation",
+        action="store_true",
+        help="compare signal variants (basket-level aggregates only)",
+    )
     args = parser.parse_args()
+
+    if args.ablation:
+        if args.synthetic:
+            print("SYNTHETIC ABLATION — methodology check only.\n")
+        basket = _load_basket(args)
+        if not basket:
+            print("No data available.")
+            return 1
+        _run_ablation(basket)
+        return 0
 
     rows: list[TickerEval] = []
     if args.synthetic:
