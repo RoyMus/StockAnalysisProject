@@ -143,13 +143,34 @@ def _fmt(value: float | None, spec: str = ".3f") -> str:
 
 
 def _load_basket(args: argparse.Namespace) -> list[tuple[str, pd.DataFrame]]:
-    """Fetch (or synthesize) the histories once so ablations reuse them."""
+    """Fetch (or synthesize, or read from disk) the histories once."""
     if args.synthetic:
         return [(f"SYN{seed:02d}", _make_synthetic(seed)) for seed in range(10)]
 
+    tickers = HOLDOUT_TICKERS if args.holdout else DEV_TICKERS
+
+    if args.data_dir:
+        # Offline mode: read <TICKER>.csv files (Date index + OHLCV columns,
+        # the exact format `history.to_csv()` produces). Lets the evaluation
+        # run on real exported data in environments without market-data
+        # network access.
+        data_dir = Path(args.data_dir)
+        loaded_csv: list[tuple[str, pd.DataFrame]] = []
+        for ticker in tickers:
+            path = data_dir / f"{ticker}.csv"
+            if not path.exists():
+                print(f"  {ticker}: no file at {path}, skipped")
+                continue
+            df = pd.read_csv(path, index_col=0, parse_dates=True)
+            missing = {"Open", "High", "Low", "Close", "Volume"} - set(df.columns)
+            if missing:
+                print(f"  {ticker}: missing columns {sorted(missing)}, skipped")
+                continue
+            loaded_csv.append((ticker, df))
+        return loaded_csv
+
     from stockanalysis.data import get_price_history
 
-    tickers = HOLDOUT_TICKERS if args.holdout else DEV_TICKERS
     loaded: list[tuple[str, pd.DataFrame]] = []
     for ticker in tickers:
         try:
@@ -190,6 +211,13 @@ def _run_ablation(basket: list[tuple[str, pd.DataFrame]]) -> None:
             }
         )
     print(pd.DataFrame(summary_rows).to_string(index=False))
+    n_variants = len(SIGNAL_VARIANTS)
+    print(
+        f"\nMultiple-comparisons note: {n_variants} variants were tested, so judge\n"
+        f"the best variant against a Bonferroni-adjusted threshold of\n"
+        f"p < {0.05 / n_variants:.3f} (raw 0.05 / {n_variants}) — picking the best of "
+        f"several tries and\nusing the unadjusted threshold is itself a form of overfitting."
+    )
     print(
         "\nDecision rule: prefer the variant with the best pooled IC p-value AND\n"
         "mean Sharpe on the dev basket; confirm the single chosen variant on the\n"
@@ -207,6 +235,11 @@ def main() -> int:
         "--ablation",
         action="store_true",
         help="compare signal variants (basket-level aggregates only)",
+    )
+    parser.add_argument(
+        "--data-dir",
+        default=None,
+        help="read <TICKER>.csv OHLCV files from this directory instead of fetching",
     )
     args = parser.parse_args()
 
