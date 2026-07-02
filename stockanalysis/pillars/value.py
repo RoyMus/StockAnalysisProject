@@ -37,7 +37,7 @@ def band_score(value: float, bands: list[tuple[float, float]]) -> float:
         return bands[0][1]
     if value >= bands[-1][0]:
         return bands[-1][1]
-    for (x0, y0), (x1, y1) in zip(bands, bands[1:]):
+    for (x0, y0), (x1, y1) in zip(bands, bands[1:], strict=False):
         if x0 <= value <= x1:
             t = (value - x0) / (x1 - x0)
             return y0 + t * (y1 - y0)

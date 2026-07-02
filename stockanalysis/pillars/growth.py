@@ -52,7 +52,9 @@ def _growth_consistency_signal(financials: FinancialHistory) -> Signal | None:
     if len(values) < 5:
         return None
     pairs = len(values) - 1
-    grew = sum(1 for newer, older in zip(values, values[1:]) if newer > older)
+    grew = sum(
+        1 for newer, older in zip(values, values[1:], strict=False) if newer > older
+    )
     fraction = grew / pairs
     return Signal(
         name="Growth consistency",
